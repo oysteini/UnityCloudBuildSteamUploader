@@ -118,13 +118,19 @@ namespace BuildUploader.Console
             var steamworksDir = ConfigurationSettings.AppSettings["STEAMWORKS_DIRECTORY"];
             Trace.TraceInformation("Invoking Steamworks SDK to upload build");
             string command = string.Format(
-                @"{0}\Publish-Build.bat {1} ""{2}"" {3} {4} ""{5}""",
-                steamworksDir,
-                steamSettings.Username,
-                steamSettings.Password,
-                steamSettings.AppId,
-                steamSettings.AppScript,
-                Environment.CurrentDirectory + "\\" + steamSettings.ExecutablePath);
+    @"{0}\Publish-Build.bat {1} ""{2}"" {3}",
+    steamworksDir,
+    steamSettings.Username,
+    steamSettings.Password,
+    steamSettings.AppScript);
+            //string command = string.Format(
+            //    @"{0}\Publish-Build.bat {1} ""{2}"" {3} {4} ""{5}""",
+            //    steamworksDir,
+            //    steamSettings.Username,
+            //    steamSettings.Password,
+            //    steamSettings.AppId,
+            //    steamSettings.AppScript,
+            //    Environment.CurrentDirectory + "\\" + steamSettings.ExecutablePath);
 
             int exitCode;
             ProcessStartInfo processInfo;
