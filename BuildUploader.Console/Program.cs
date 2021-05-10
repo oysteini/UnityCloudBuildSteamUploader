@@ -61,8 +61,20 @@ namespace BuildUploader.Console
                     var successfullyDownloadedBuild = DownloadUnityCloudBuild(buildConfig.SteamSettings, latestBuild);
                     if (successfullyDownloadedBuild)
                     {
-                        bool success = UploadBuildToSteamworks(buildConfig.SteamSettings);
-                        TryNotifySlack(buildConfig.SteamSettings, latestBuild, success);
+                        bool success = false;
+                        if (buildConfig.UnitySettings.TargetId == "ios")
+                        {
+                            string error;
+                            success = UploadBuildToAppstore(buildConfig.AppSettings, latestBuild.FileName, out error);
+                            TryNotifySlack(error, latestBuild, success);
+                        }
+                        else
+                        {
+                            success = UploadBuildToSteamworks(buildConfig.SteamSettings);
+                            TryNotifySlack(buildConfig.SteamSettings, latestBuild, success);
+                        }
+
+                        
                     }
                 }
 
@@ -75,6 +87,40 @@ namespace BuildUploader.Console
                 "Checking for new builds in {0} minutes at {1:MM/dd/yy H:mm}",
                 pollingFrequencyRaw,
                 DateTime.Now + TimeSpan.FromMilliseconds(pollingFrequency));
+        }
+
+        private static void TryNotifySlack(string error, BuildDefinition latestBuild, bool success)
+        {
+            var slackUrl = ConfigurationSettings.AppSettings["SLACK_NOTIFICATION_URL"];
+            if (!string.IsNullOrEmpty(slackUrl))
+            {
+                Trace.TraceInformation("Sending Slack notification");
+                string payload;
+                if (success)
+                {
+                    payload = string.Format(
+                        "{0} build {1:N0} has been uploaded to appstore connect.",
+                        latestBuild.FileName,
+                        latestBuild.BuildNumber);
+                }
+                else
+                {
+                    payload = string.Format(
+                        "Failed to upload {0} build {1:N0} to appstore connect.",
+                        latestBuild.FileName,
+                        latestBuild.BuildNumber);
+                }
+
+                var message = @"{""text"": """ + payload + @"""}";
+
+                using (var client = new HttpClient())
+                {
+                    HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, slackUrl);
+                    request.Content = new StringContent(message, Encoding.UTF8, "application/json");
+                    var task = client.SendAsync(request);
+                    task.Wait();
+                }
+            }
         }
 
         private static void TryNotifySlack(SteamSettings steamSettings, BuildDefinition latestBuild, bool success)
@@ -113,7 +159,55 @@ namespace BuildUploader.Console
             }
         }
 
-        private static bool UploadBuildToSteamworks(SteamSettings steamSettings)
+        private static bool UploadBuildToAppstore(AppStoreSettings appstoreSettings, string filename, out string error)
+        {
+            var distributionDirectory = ConfigurationSettings.AppSettings["DOWNLOAD_DIRECTORY"];
+            Trace.TraceInformation("Invoking ios-uploader to upload build to App Store Connect");
+            string command = string.Format(
+    @"ios-uploader -u {1} -p {2} -f {0}\{3}",
+    distributionDirectory,
+    appstoreSettings.UserId,
+    appstoreSettings.AppSpecificPassword,
+    filename);
+
+            int exitCode;
+            ProcessStartInfo processInfo;
+            Process process;
+
+            processInfo = new ProcessStartInfo("cmd.exe", "/c " + command);
+            processInfo.WorkingDirectory = Environment.CurrentDirectory;
+            processInfo.CreateNoWindow = true;
+            processInfo.UseShellExecute = false;
+            // *** Redirect the output ***
+            processInfo.RedirectStandardError = true;
+            processInfo.RedirectStandardOutput = true;
+
+            process = Process.Start(processInfo);
+            process.WaitForExit();
+            
+            // *** Read the streams ***
+            // Warning: This approach can lead to deadlocks, see Edit #2
+            string output = process.StandardOutput.ReadToEnd();
+            error = process.StandardError.ReadToEnd();
+
+            exitCode = process.ExitCode;
+
+            Trace.TraceInformation(output);
+            if (exitCode == 0)
+            {
+                Trace.TraceInformation("iOS-Uploader finished successfully");
+            }
+            else
+            {
+                Trace.TraceError(error);
+                Trace.TraceError("iOS-Uploader failed");
+            }
+
+            process.Close();
+
+            return exitCode == 0;
+        }
+            private static bool UploadBuildToSteamworks(SteamSettings steamSettings)
         {
             var steamworksDir = ConfigurationSettings.AppSettings["STEAMWORKS_DIRECTORY"];
             Trace.TraceInformation("Invoking Steamworks SDK to upload build");

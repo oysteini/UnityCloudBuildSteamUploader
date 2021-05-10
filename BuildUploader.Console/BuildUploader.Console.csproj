@@ -50,6 +50,7 @@
     <Compile Include="BuildConfiguration.cs" />
     <Compile Include="SteamSettings.cs" />
     <Compile Include="UnityCloudBuildSettings.cs" />
+    <Compile Include="AppStoreSettings.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

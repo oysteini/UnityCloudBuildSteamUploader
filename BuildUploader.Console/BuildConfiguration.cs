@@ -9,5 +9,8 @@ namespace BuildUploader.Console
 
         [JsonProperty("steam")]
         public SteamSettings SteamSettings { get; internal set; }
+
+        [JsonProperty("appstore")]
+        public AppStoreSettings AppSettings { get; internal set; }
     }
 }
