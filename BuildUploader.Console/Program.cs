@@ -335,16 +335,17 @@ namespace BuildUploader.Console
                 int latestBuildNumber = 0;
                 BuildDefinition latestBuild = null;
                 foreach (var build in successfulBuilds)
-                {
+                {                    
                     int buildNumber = build.build;
                     if (latestBuild == null || latestBuildNumber < buildNumber)
                     {
+                        string type = build.links.download_primary.meta.type;
                         latestBuildNumber = buildNumber;
                         latestBuild = new BuildDefinition()
                         {
                             BuildNumber = build.build,
                             DownloadUrl = build.links.download_primary.href,
-                            FileName = build.build + "_" + cloudBuildSettings.ProjectName + "_" + build.buildtargetid + '.' + build.links.download_primary.meta.type,
+                            FileName = build.build + "_" + cloudBuildSettings.ProjectName + "_" + build.buildtargetid + '.' + type.ToLower(),
                         };
                     }
                 }
