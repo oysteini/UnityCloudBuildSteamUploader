@@ -71,7 +71,7 @@ namespace BuildUploader.Console
                         else
                         {
                             success = UploadBuildToSteamworks(buildConfig.SteamSettings);
-                            TryNotifySlack(buildConfig.SteamSettings, latestBuild, success);
+                            TryNotifySlack(buildConfig.SteamSettings, latestBuild, success, buildConfig);
                         }
 
                         
@@ -123,7 +123,7 @@ namespace BuildUploader.Console
             }
         }
 
-        private static void TryNotifySlack(SteamSettings steamSettings, BuildDefinition latestBuild, bool success)
+        private static void TryNotifySlack(SteamSettings steamSettings, BuildDefinition latestBuild, bool success, BuildConfiguration buildConfig)
         {
             var slackUrl = ConfigurationSettings.AppSettings["SLACK_NOTIFICATION_URL"];
             if (!string.IsNullOrEmpty(slackUrl))
@@ -133,18 +133,20 @@ namespace BuildUploader.Console
                 if (success)
                 {
                     payload = string.Format(
-                        "{0} build {1:N0} has been uploaded to the {2} branch on Steam.",
+                        "{0} {1} build {2:N0} has been uploaded to Steam (appid: {3}).",
+                        buildConfig.UnitySettings.TargetId,
                         steamSettings.DisplayName,
                         latestBuild.BuildNumber,
-                       steamSettings.BranchName ?? "default");
+                        steamSettings.AppId);
                 }
                 else
                 {
                     payload = string.Format(
-                        "Failed to upload {0} build {1:N0} to Steam.",
+                        "Failed to upload {0} {1} build {2:N0} to Steam (appid: {3}).",
+                        buildConfig.UnitySettings.TargetId,
                         steamSettings.DisplayName,
                         latestBuild.BuildNumber,
-                       steamSettings.BranchName ?? "default");
+                        steamSettings.AppId);
                 }
 
                 var message = @"{""text"": """ + payload + @"""}";
@@ -269,6 +271,7 @@ namespace BuildUploader.Console
             bool success = true;
             Trace.TraceInformation("Checking whether latest build has already been processed");
             var downloadDir = ConfigurationSettings.AppSettings["DOWNLOAD_DIRECTORY"];
+            latestBuild.FileName = steamSettings.AppId + "_" + latestBuild.FileName;
             var filePath = downloadDir + "/" + latestBuild.FileName;
             if (File.Exists(filePath))
             {
